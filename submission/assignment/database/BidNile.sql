@@ -198,3 +198,229 @@ create table Sales.Bid
 go
 
 
+--3.1
+alter table Membership.City
+add constraint FK_City_Country 
+	foreign key (CountryCode)
+	references Membership.Country (CountryCode);
+go
+
+alter table Membership.Member
+add constraint FK_Member_Member
+	foreign key (InvitedByMemberId)
+	references Membership.Member(MemberId);
+go
+
+alter table Membership.Member
+add constraint FK_Member_City
+	foreign key (CityId)
+	references Membership.City(CityId);
+go
+
+alter table [Membership].[Wallet]
+add constraint FK_Wallet_Member
+	foreign key (MemberId)
+	references Membership.Member(MemberId);
+go
+
+alter table [Operations].[Employee]
+add constraint FK_Employee_Member
+	foreign key (MemberId)
+	references Membership.Member(MemberId);
+go
+
+alter table [Operations].[Employee]
+add constraint FK_Employee_Warehouse
+	foreign key (WarehouseId)
+	references [Operations].Warehouse(WarehouseId);
+go
+
+alter table [Operations].[Warehouse]
+add constraint FK_Warehouse_City
+	foreign key (CityId)
+	references Membership.City(CityId);
+go
+
+alter table [Operations].[Warehouse]
+add constraint FK_Warehouse_ManageMember
+	foreign key (ManageMemberId)
+	references Operations.Employee(MemberId);
+go
+
+alter table [Catalog].[Item]
+add constraint FK_Item_Warehouse
+	foreign key (WarehouseId)
+	references [Operations].[Warehouse](WarehouseId);
+go
+
+alter table [Catalog].[Item]
+add constraint FK_Item_Employee
+	foreign key (InspectorMemberId)
+	references Operations.Employee(MemberId);
+go
+
+alter table [Catalog].[Item]
+add constraint FK_Item_SellerMember
+	foreign key (SellerMemberId)
+	references [Membership].[Member](MemberId);
+go
+
+alter table [Catalog].[Item]
+add constraint FK_Item_Category
+	foreign key (CategoryCode)
+	references [Catalog].[Category](CategoryCode);
+go
+
+alter table [Catalog].[Category]
+add constraint FK_Category_Category
+	foreign key (ParentCategory)
+	references [Catalog].[Category](CategoryCode);
+go
+
+alter table [Catalog].[ItemPhoto]
+add constraint FK_ItemPhoto_Item
+	foreign key (ItemId)
+	references [Catalog].[Item](ItemId)
+	on delete cascade;
+go
+
+alter table [Sales].[Auction]
+add constraint FK_Auction_Item
+	foreign key (ItemId)
+	references [Catalog].[Item](ItemId);
+go
+
+alter table [Sales].[AuctionMember]
+add constraint FK_AuctionMember_Auction
+	foreign key (AuctionId)
+	references [Sales].[Auction](AuctionId);
+go
+
+alter table [Sales].[AuctionMember]
+add constraint FK_AuctionMember_Member
+	foreign key (MemberId)
+	references [Membership].[Member](MemberId);
+go
+
+
+alter table [Sales].[Bid]
+add constraint FK_Bid_Auction
+	foreign key (AuctionId)
+	references [Sales].[Auction](AuctionId);
+go
+
+
+alter table [Sales].[Bid]
+add constraint FK_Bid_Member
+	foreign key (MemberId)
+	references [Membership].[Member](MemberId);
+go
+
+--3.2
+alter table [Membership].[Member]
+add LanguageCode char(2) not null
+	constraint DF_Member_Ar default 'ar',
+	constraint CK_Member_LanguageCode check (LanguageCode in ('ar', 'en'));
+go
+
+--3.3
+alter  table [Catalog].[Item]
+add IsFeatured bit not null
+	constraint DF_Item_IsFeatured default (0);
+go
+
+--3.4
+execute sp_rename 'Sales.Bid.IpAddress', 'DeviceIp', 'COLUMN';
+go
+
+alter table [Operations].[Warehouse]
+drop constraint CK_Warehouse_Capacity;
+go
+
+execute sp_rename 'Operations.Warehouse.Capacity', 'MaxItems', 'COLUMN';
+go
+
+alter table [Operations].[Warehouse]
+add constraint CK_Warehouse_MaxItems check (MaxItems>0);
+go
+
+--3.5
+alter table [Membership].[Member]
+	alter column FullName nvarchar(150) not null;
+go
+
+--3.6
+alter table [Operations].[Warehouse]
+drop constraint CK_Warehouse_MaxItems;
+go
+
+alter table [Operations].[Warehouse]
+alter column MaxItems smallint not null;
+go
+
+alter table [Operations].[Warehouse]
+add constraint CK_Warehouse_MaxItems check (MaxItems>0 and MaxItems<=30000);
+go
+
+--3.7
+alter table [Catalog].[Category]
+	drop constraint CK_Category_CommissionPercentage;
+go
+
+alter table [Catalog].[Category]
+	add constraint CK_Category_CommissionPercentage check (CommissionPercentage between 0 and 25);
+go
+
+--3.8
+alter table [Sales].[Auction]
+	drop constraint DF_Auction_Status;
+go
+
+alter table [Sales].[Auction]
+	drop constraint CK_Auction_Status;
+go
+
+alter table [Sales].[Auction]
+	add constraint DF_Auction_Status default ('PendingReview') for Status;
+go
+
+alter table [Sales].[Auction]
+	add constraint CK_Auction_Status check (Status in ('PendingReview','Draft', 'Live', 'Ended', 'Cancelled'));
+go
+
+--3.9
+alter table [Sales].[Auction]
+	add BuyNowPrice decimal(12,2) null;
+go
+
+alter table [Sales].[Auction] with check
+	add constraint CK_Auction_BuyNowPrice
+	check (BuyNowPrice is null or BuyNowPrice > StartingPrice);
+go
+
+--3.10
+alter table [Membership].[Member]
+	add constraint UQ_Member_Phone unique (Phone);
+go
+
+--3.11
+alter table [Membership].[Member]
+	add VerifiedAt datetime2(3) null;
+go
+
+alter table [Membership].[Member]
+	drop constraint DF_Member_IsVerified;
+go
+
+alter table [Membership].[Member]
+	drop column IsVerified;
+go
+
+--3.12
+
+create schema Marketing;
+go
+
+alter schema Marketing transfer [Sales].[AuctionMember];
+go
+
